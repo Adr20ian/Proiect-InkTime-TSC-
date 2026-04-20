@@ -59,3 +59,70 @@ This project focuses on the development of a low-power, high-versatility smartwa
 | U3 | 1 | 1-Cell/2-Cell Fuel Gauge with ModelGauge | TDFN-8 (2x2) | MAX17048G+T10 | Analog Devices / Maxim | MAX17048G+T10 |
 | X1 | 1 | Crystal Oscillator | 2016 | 32MHz | | |
 | X2 | 1 | Crystal Oscillator RTC | 3215 | 32.768kHz | | |
+
+## Hardware  Functionality
+
+### ### 1. Central Processing Unit: nRF52840
+The **nRF52840 SoC** was selected as the system's brain due to its balance between performance and energy efficiency. 
+* **Key Features:** ARM Cortex-M4F processor, native USB support, and a versatile GPIO multiplexer for SPI/I2C routing.
+* **Timing:** The system utilizes a **32 MHz crystal** for high-speed operations and a **32.768 kHz crystal** for maintaining accurate time in sleep modes.
+* **Connectivity:** Integrated RF frontend with a **2.4 GHz ceramic chip antenna** for Bluetooth Low Energy (BLE) communication.
+
+---
+
+### ### 2. Power Management & Charging
+To ensure reliable portable operation, the device features a sophisticated power rail architecture:
+* **USB-C Interface:** Handles both 5V power input and data communication, protected against transients via the **USBLC6-2SC6Y** ESD suppressor.
+* **Charger & PMIC:** The **BQ25180** manages LiPo battery charging cycles and system power path selection.
+* **Regulation:** An **RT6160 DC/DC converter** provides a stable voltage rail with high efficiency, supported by a network of decoupling LC filters.
+* **Fuel Gauge:** A **MAX17048** sensor monitors the battery's State of Charge (SoC) via I2C, allowing for precise percentage estimation.
+
+---
+
+### ### 3. E-Paper Display Subsystem
+For the visual interface, a **1.54-inch E-Paper (EPD)** was implemented through a 24-pin FPC connector.
+* **Drive Circuit:** A custom-designed discrete booster circuit (MOSFETs, Schottky diodes, and capacitors) generates the high voltages required for the electrophoresis process.
+* **Control:** Driven via **SPI**, using dedicated lines for **Data/Command (DC)**, **Reset (RST)**, and a **Busy** signal to monitor the refresh status.
+* **Rationale:** The display's ability to maintain an image without power is critical for the device's "always-on" wearable goal.
+
+---
+
+### ### 4. Inertial Measurement & Haptics
+* **Motion Sensing:** The **BMA421 IMU** is utilized for activity tracking. It communicates via **I2C** and features two programmable interrupt pins (`INT1`, `INT2`) to wake the MCU upon detecting movement or gestures.
+* **Vibration Feedback:** Haptic alerts are managed by the **DRV2605** driver. This I2C-controlled chip offloads complex vibration pattern generation from the MCU, driving the haptic motor with precision.
+
+---
+
+### ### 5. User Input & Debugging
+* **Physical Interface:** Three tactile switches (**Up, Enter, Down**) are mapped to GPIOs for menu navigation and user interaction.
+* **Development Access:** A **TC2030-IDC Tag-Connect** footprint provides a 6-pin SWD (Serial Wire Debug) interface for flashing firmware and real-time debugging (`SWDIO`, `SWDCLK`, `SWO`).
+
+---
+
+## ## Peripheral Pin Mapping
+
+| Component | Protocol | nRF52840 Pins | Purpose |
+| :--- | :---: | :--- | :--- |
+| **E-Paper Display** | SPI | SCK, MOSI, CS, DC | Graphics and UI updates |
+| **BMA421 IMU** | I2C | SDA, SCL, INT1/2 | Step counting and wake-up |
+| **MAX17048 Gauge** | I2C | SDA, SCL, ALERT | Battery health monitoring |
+| **DRV2605 Haptic** | I2C | SDA, SCL, EN | Haptic alerts/vibration |
+| **Buttons** | GPIO | P0.xx, P0.xx, P0.xx | User navigation |
+| **Debug Port** | SWD | SWDIO, SWDCLK, RST | Programming and Debug |
+
+## ## Design Challenges & Debugging Log
+
+During the PCB layout phase, several technical challenges were encountered and addressed to ensure the manufacturability and reliability of the smartwatch.
+
+### ### 1. Copper Width Violations (Net Class: Power)
+A significant number of DRC (Design Rule Check) errors were related to **Copper Width** within the `trasee-de-alimentare` (power traces) net class. 
+* **The Issue:** The design rules initially required a 0.3 mm width for all power traces to handle current capacity. However, many SMD components (such as the BMA421 IMU and the nRF52840 itself) have ultra-fine pads that cannot physically accommodate a 0.3 mm trace without causing short circuits.
+* **The Solution:** The rules were adjusted to allow a minimum width of 0.15 mm at the entry point of the pads (neck-down technique), while maintaining the preferred 0.3 mm width for the main distribution lines to ensure low impedance.
+
+### ### 2. Complex Routing & Unrouted Airwires
+Despite migrating to a **4-layer PCB stack-up**, approximately 10 airwires remained unrouted in the final manual pass. 
+* **The Challenge:** Routing these specific signals on the Top or Bottom layers created critical violations, such as **Overlap (wire-on-wire)** or **Via-to-Via clearance errors**. 
+* **Decision Rationale:** To prioritize signal integrity and avoid manufacturing defects (like drill breakouts or short circuits caused by overcrowded vias), these traces were left for a final optimized iteration. Forced routing in these congested areas would have compromised the solid Ground Plane (Layer 2) or created parasitic capacitance issues.
+
+### ### 3. Mechanical Constraints & Clearance
+As shown in the board dimensions (**46.00 mm x 35.00 mm**), the compact wearable form factor forced a high component density. Several **Smd-Hole** and **Board Outline Clearance** errors were resolved by manually shifting components and adjusting the copper-to-edge distance to meet JLCPCB's manufacturing tolerances.
