@@ -5,4 +5,5 @@ This project focuses on the development of a low-power, high-versatility smartwa
 ## Block diagram 
 <img width="2131" height="1126" alt="Screenshot (1077)" src="https://github.com/user-attachments/assets/e07a1e33-20fc-4ca3-8726-7ea12e3ea11a" />
 
-
+##Bill of Materials (BOM)
+ [bill-of-materials](./bill-of-materials)
